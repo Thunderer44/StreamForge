@@ -1,0 +1,65 @@
+<Window x:Class="ScreenShareApp.SelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select what to share" Height="600" Width="800"
+        WindowStartupLocation="CenterScreen" Background="#36393F">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <TextBlock Grid.Row="0" Text="Select what to share" FontSize="20" FontWeight="SemiBold" 
+                   Foreground="White" Margin="20,20,20,10"/>
+        
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,0,20,15">
+            <Button x:Name="ScreensTab" Content="Screens" Width="100" Height="32" Margin="0,0,5,0" 
+                    Click="ScreensTab_Click" Background="#5865F2" Foreground="White" BorderThickness="0" FontSize="14"/>
+            <Button x:Name="WindowsTab" Content="Windows" Width="100" Height="32" 
+                    Click="WindowsTab_Click" Background="#4F545C" Foreground="#B9BBBE" BorderThickness="0" FontSize="14"/>
+        </StackPanel>
+        
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="20,0,20,0">
+            <ItemsControl x:Name="ItemsGrid">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="220" Height="160" Margin="5" Background="#2F3136" 
+                                BorderBrush="#202225" BorderThickness="2" CornerRadius="8"
+                                MouseLeftButtonDown="Item_Click" Cursor="Hand" Tag="{Binding Index}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Background="#40444B" Margin="8,8,8,4" CornerRadius="4">
+                                    <TextBlock Text="{Binding Icon}" FontFamily="Segoe UI Emoji" FontSize="50" 
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#DCDDDE"/>
+                                </Border>
+                                <TextBlock Grid.Row="1" Text="{Binding Name}" Foreground="White" 
+                                           FontSize="13" Margin="8,4,8,8" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        
+        <Border Grid.Row="3" Background="#2F3136" Padding="20,15">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancel" Width="80" Height="38" Margin="0,0,10,0" 
+                        Click="Cancel_Click" Background="#4F545C" Foreground="White" 
+                        BorderThickness="0" FontSize="14" Cursor="Hand"/>
+                <Button Content="Share" Width="80" Height="38" 
+                        Click="Share_Click" Background="#5865F2" Foreground="White" 
+                        BorderThickness="0" FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
