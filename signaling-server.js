@@ -1,16 +1,16 @@
 // signaling-server.js
 import { WebSocketServer } from "ws";
 
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 8080, host: '0.0.0.0' });
 
 wss.on("connection", (ws) => {
-  console.log("New client connected");
+  console.log("New client connected", ws._socket.remoteAddress);
 
   ws.on("message", (message) => {
-    // Broadcast message to all other clients
+    // Broadcast frames to all other clients
     wss.clients.forEach((client) => {
-      if (client !== ws && client.readyState === ws.OPEN) {
-        client.send(message.toString());
+      if (client !== ws && client.readyState === 1) {
+        client.send(message);
       }
     });
   });
@@ -18,4 +18,5 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("Client disconnected"));
 });
 
-console.log("✅ Signaling server running on ws://localhost:8080");
+console.log("✅ Streaming server running on ws://0.0.0.0:8080");
+console.log("📱 Access from other devices using your local IP");

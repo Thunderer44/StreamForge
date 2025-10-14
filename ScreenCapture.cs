@@ -116,12 +116,20 @@ namespace ScreenShareApp
 
         private void CaptureDisplayLoop()
         {
+            byte[]? buffer = null;
             while (_running)
             {
+                SharpDX.DXGI.Resource? frame = null;
                 try
                 {
-                    _duplication!.TryAcquireNextFrame(100, out _, out var frame);
-                    using var texture = frame.QueryInterface<Texture2D>();
+                    var result = _duplication!.TryAcquireNextFrame(100, out _, out frame);
+                    if (result.Failure || frame is null)
+                    {
+                        Thread.Sleep(10);
+                        continue;
+                    }
+
+                    using var texture = frame!.QueryInterface<Texture2D>();
                     var desc = texture.Description;
 
                     if (_staging == null)
@@ -135,15 +143,34 @@ namespace ScreenShareApp
 
                     _device!.ImmediateContext.CopyResource(texture, _staging);
                     var box = _device.ImmediateContext.MapSubresource(_staging, 0, MapMode.Read, SharpDX.Direct3D11.MapFlags.None);
-                    var bytes = new byte[desc.Height * box.RowPitch];
-                    Utilities.Read(box.DataPointer, bytes, 0, bytes.Length);
+                    
+                    var size = desc.Width * desc.Height * 4;
+                    if (buffer == null || buffer.Length != size)
+                        buffer = new byte[size];
+                    
+                    if (box.RowPitch == desc.Width * 4)
+                    {
+                        Utilities.Read(box.DataPointer, buffer, 0, buffer.Length);
+                    }
+                    else
+                    {
+                        for (int y = 0; y < desc.Height; y++)
+                        {
+                            Utilities.Read(box.DataPointer + y * box.RowPitch, buffer, y * desc.Width * 4, desc.Width * 4);
+                        }
+                    }
+                    
                     _device.ImmediateContext.UnmapSubresource(_staging, 0);
-
-                    OnFrameCaptured?.Invoke(bytes, desc.Width, desc.Height);
-                    _duplication.ReleaseFrame();
-                    frame.Dispose();
+                    OnFrameCaptured?.Invoke(buffer, desc.Width, desc.Height);
+                    
+                    _duplication!.ReleaseFrame();
+                    Thread.Sleep(33);
                 }
                 catch (SharpDXException) { Thread.Sleep(10); }
+                finally
+                {
+                    frame?.Dispose();
+                }
             }
         }
 

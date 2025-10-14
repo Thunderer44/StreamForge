@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Screen Share Viewer</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #1a1a1a; font-family: Arial; }
+        #status { color: #fff; margin-bottom: 10px; }
+        canvas { border: 2px solid #5865F2; max-width: 100%; }
+    </style>
+</head>
+<body>
+    <div id="status">Connecting...</div>
+    <canvas id="canvas"></canvas>
+    
+    <script>
+        const ws = new WebSocket('ws://localhost:8080');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+
+        ws.binaryType = 'arraybuffer';
+
+        ws.onmessage = async (event) => {
+            if (event.data instanceof ArrayBuffer) {
+                const data = new Uint8Array(event.data);
+                const width = (data[0] << 8) | data[1];
+                const height = (data[2] << 8) | data[3];
+                
+                if (canvas.width !== width || canvas.height !== height) {
+                    canvas.width = width;
+                    canvas.height = height;
+                }
+                
+                const compressed = data.slice(4);
+                const ds = new DecompressionStream('gzip');
+                const blob = new Blob([compressed]);
+                const decompressed = await new Response(blob.stream().pipeThrough(ds)).arrayBuffer();
+                const frameData = new Uint8Array(decompressed);
+                
+                const imageData = ctx.createImageData(width, height);
+                
+                // Convert BGRA to RGBA
+                for (let i = 0; i < frameData.length; i += 4) {
+                    imageData.data[i] = frameData[i + 2];     // R
+                    imageData.data[i + 1] = frameData[i + 1]; // G
+                    imageData.data[i + 2] = frameData[i];     // B
+                    imageData.data[i + 3] = frameData[i + 3]; // A
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                status.textContent = `Receiving: ${width}x${height}`;
+            }
+        };
+
+        ws.onopen = () => status.textContent = 'Waiting for stream...';
+        ws.onerror = () => status.textContent = 'Connection error';
+    </script>
+</body>
+</html>
