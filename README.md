@@ -1,5 +1,8 @@
-# Screen Share App
+<div align=center>
+   <img width="512" height="512" alt="STREAMFORGE LOGO" src="https://github.com/user-attachments/assets/9ffb9f1b-2aac-4c64-ab23-bdfe624ccb7e" />
+</div>
 
+## StreamForge
 A Windows desktop application for screen and window capture with a Discord-style UI.
 
 ## Features
