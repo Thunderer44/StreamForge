@@ -8,9 +8,12 @@
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Image x:Name="PreviewImage" Stretch="Uniform"/>
-        <Button x:Name="ShareButton" Content="Share Screen" Width="150" Height="40" 
-                HorizontalAlignment="Center" VerticalAlignment="Center" 
-                Click="ShareButton_Click" FontSize="16"/>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Button x:Name="ShareButton" Content="Share Screen" Width="150" Height="40" 
+                    Click="ShareButton_Click" FontSize="16" Margin="0,0,0,10"/>
+            <Button x:Name="ViewButton" Content="View Stream" Width="150" Height="40" 
+                    Click="ViewButton_Click" FontSize="16"/>
+        </StackPanel>
         <Button x:Name="StopButton" Content="Stop Stream" Width="150" Height="40" 
                 HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20"
                 Click="StopButton_Click" FontSize="16" Visibility="Collapsed"/>

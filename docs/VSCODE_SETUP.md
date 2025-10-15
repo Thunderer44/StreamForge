@@ -5,7 +5,7 @@
 ### 1. Start the WebSocket Server
 
 ```bash
-node signaling-server.js
+node server/signaling-server.js
 ```
 
 ### 2. Forward Port 8080 (WebSocket Server)
@@ -19,7 +19,7 @@ node signaling-server.js
 ### 3. Start Live Server for Viewer
 
 1. Install "Live Server" extension if not installed
-2. Right-click `viewer-remote.html` → **Open with Live Server**
+2. Right-click `viewers/viewer-remote.html` → **Open with Live Server**
 3. This will start on port `5500`
 
 ### 4. Forward Port 5500 (Live Server)
@@ -68,7 +68,7 @@ Then:
 - WebSocket URL uses `wss://` (not `ws://`)
 
 **Check Server:**
-- Ensure `node signaling-server.js` is running
+- Ensure `node server/signaling-server.js` is running
 - Check terminal for "Streaming server running" message
 
 ### "Mixed Content" Error in Browser
@@ -86,7 +86,7 @@ Then:
 ### Slow/Laggy Stream
 
 - VSCode port forwarding adds latency
-- For better performance, use local network (see NETWORK_SETUP.md)
+- For better performance, use local network (see ../NETWORK_SETUP.md)
 - Compression helps but internet speed matters
 
 ## Quick Reference

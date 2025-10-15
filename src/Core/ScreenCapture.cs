@@ -19,6 +19,7 @@ namespace ScreenShareApp
         private IntPtr _windowHandle;
 
         public event Action<byte[], int, int>? OnFrameCaptured;
+        public event Action? OnCaptureStopped;
 
         public static string[] GetDisplays()
         {
@@ -77,20 +78,38 @@ namespace ScreenShareApp
 
         private void CaptureWindowLoop()
         {
+            byte[]? pauseFrame = null;
+            int pauseWidth = 0, pauseHeight = 0;
+            
             while (_running)
             {
                 try
                 {
-                    GetClientRect(_windowHandle, out var rect);
-                    var w = rect.Right - rect.Left;
-                    var h = rect.Bottom - rect.Top;
+                    if (!IsWindow(_windowHandle))
+                    {
+                        _running = false;
+                        OnCaptureStopped?.Invoke();
+                        break;
+                    }
+                    
+                    if (IsIconic(_windowHandle))
+                    {
+                        if (pauseFrame != null)
+                            OnFrameCaptured?.Invoke(pauseFrame, pauseWidth, pauseHeight);
+                        Thread.Sleep(100);
+                        continue;
+                    }
+                    
+                    GetClientRect(_windowHandle, out var clientRect);
+                    var w = clientRect.Right - clientRect.Left;
+                    var h = clientRect.Bottom - clientRect.Top;
                     if (w <= 0 || h <= 0) { Thread.Sleep(100); continue; }
 
                     var hdcWindow = GetDC(_windowHandle);
                     var hdcMem = CreateCompatibleDC(hdcWindow);
                     var hBitmap = CreateCompatibleBitmap(hdcWindow, w, h);
                     SelectObject(hdcMem, hBitmap);
-                    PrintWindow(_windowHandle, hdcMem, 2);
+                    PrintWindow(_windowHandle, hdcMem, 3);
 
                     var bmi = new BITMAPINFOHEADER 
                     { 
@@ -107,11 +126,98 @@ namespace ScreenShareApp
                     DeleteDC(hdcMem);
                     ReleaseDC(_windowHandle, hdcWindow);
 
+                    if (pauseFrame == null || pauseWidth != w || pauseHeight != h)
+                    {
+                        pauseFrame = CreatePauseFrame(w, h);
+                        pauseWidth = w;
+                        pauseHeight = h;
+                    }
+
                     OnFrameCaptured?.Invoke(bytes, w, h);
                     Thread.Sleep(33);
                 }
                 catch { Thread.Sleep(100); }
             }
+        }
+        
+        private byte[] CreatePauseFrame(int width, int height)
+        {
+            var frame = new byte[width * height * 4];
+            for (int i = 0; i < frame.Length; i += 4)
+            {
+                frame[i] = 40; frame[i + 1] = 40; frame[i + 2] = 40; frame[i + 3] = 255;
+            }
+            
+            DrawText(frame, width, height, "STREAM PAUSED", width / 2, height / 2 - 30, 3);
+            DrawText(frame, width, height, "Window Minimized", width / 2, height / 2 + 30, 2);
+            
+            return frame;
+        }
+        
+        private void DrawText(byte[] frame, int width, int height, string text, int centerX, int centerY, int scale)
+        {
+            var font = GetSimpleFont();
+            int startX = centerX - (text.Length * 6 * scale) / 2;
+            
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = char.ToUpper(text[i]);
+                if (font.ContainsKey(c))
+                {
+                    var pattern = font[c];
+                    for (int py = 0; py < 7; py++)
+                    {
+                        for (int px = 0; px < 5; px++)
+                        {
+                            if ((pattern[py] & (1 << (4 - px))) != 0)
+                            {
+                                for (int sy = 0; sy < scale; sy++)
+                                {
+                                    for (int sx = 0; sx < scale; sx++)
+                                    {
+                                        int x = startX + i * 6 * scale + px * scale + sx;
+                                        int y = centerY - 3 * scale + py * scale + sy;
+                                        if (x >= 0 && x < width && y >= 0 && y < height)
+                                        {
+                                            int idx = (y * width + x) * 4;
+                                            frame[idx] = 255; frame[idx + 1] = 255; frame[idx + 2] = 255;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        private System.Collections.Generic.Dictionary<char, byte[]> GetSimpleFont()
+        {
+            return new System.Collections.Generic.Dictionary<char, byte[]>
+            {
+                {'A', new byte[]{0x0E,0x11,0x11,0x1F,0x11,0x11,0x11}},
+                {'B', new byte[]{0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E}},
+                {'C', new byte[]{0x0E,0x11,0x10,0x10,0x10,0x11,0x0E}},
+                {'D', new byte[]{0x1E,0x11,0x11,0x11,0x11,0x11,0x1E}},
+                {'E', new byte[]{0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F}},
+                {'F', new byte[]{0x1F,0x10,0x10,0x1E,0x10,0x10,0x10}},
+                {'G', new byte[]{0x0E,0x11,0x10,0x17,0x11,0x11,0x0F}},
+                {'H', new byte[]{0x11,0x11,0x11,0x1F,0x11,0x11,0x11}},
+                {'I', new byte[]{0x0E,0x04,0x04,0x04,0x04,0x04,0x0E}},
+                {'L', new byte[]{0x10,0x10,0x10,0x10,0x10,0x10,0x1F}},
+                {'M', new byte[]{0x11,0x1B,0x15,0x15,0x11,0x11,0x11}},
+                {'N', new byte[]{0x11,0x19,0x15,0x13,0x11,0x11,0x11}},
+                {'O', new byte[]{0x0E,0x11,0x11,0x11,0x11,0x11,0x0E}},
+                {'P', new byte[]{0x1E,0x11,0x11,0x1E,0x10,0x10,0x10}},
+                {'R', new byte[]{0x1E,0x11,0x11,0x1E,0x14,0x12,0x11}},
+                {'S', new byte[]{0x0E,0x11,0x10,0x0E,0x01,0x11,0x0E}},
+                {'T', new byte[]{0x1F,0x04,0x04,0x04,0x04,0x04,0x04}},
+                {'U', new byte[]{0x11,0x11,0x11,0x11,0x11,0x11,0x0E}},
+                {'W', new byte[]{0x11,0x11,0x11,0x15,0x15,0x1B,0x11}},
+                {'Y', new byte[]{0x11,0x11,0x0A,0x04,0x04,0x04,0x04}},
+                {'Z', new byte[]{0x1F,0x01,0x02,0x04,0x08,0x10,0x1F}},
+                {' ', new byte[]{0x00,0x00,0x00,0x00,0x00,0x00,0x00}}
+            };
         }
 
         private void CaptureDisplayLoop()
@@ -183,6 +289,8 @@ namespace ScreenShareApp
         [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr hwnd, IntPtr hdc, uint flags);
         [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr hwnd);
         [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+        [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hwnd);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
         [DllImport("gdi32.dll")] static extern bool BitBlt(IntPtr hdcDest, int x, int y, int w, int h, IntPtr hdcSrc, int x1, int y1, uint rop);
         [DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleDC(IntPtr hdc);
         [DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int w, int h);

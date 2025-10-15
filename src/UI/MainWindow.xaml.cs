@@ -13,14 +13,17 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
-    private async void StopButton_Click(object sender, RoutedEventArgs e)
+    private void ViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        var viewerWindow = new ViewerWindow();
+        viewerWindow.Show();
+    }
+
+    private void StopButton_Click(object sender, RoutedEventArgs e)
     {
         StopButton.IsEnabled = false;
-        await System.Threading.Tasks.Task.Run(() => 
-        {
-            _capture?.Dispose();
-            _webrtc?.Dispose();
-        });
+        _capture?.Dispose();
+        _webrtc?.Dispose();
         _capture = null;
         _webrtc = null;
         _bitmap = null;
@@ -29,6 +32,7 @@ public partial class MainWindow : Window
         StopButton.Visibility = Visibility.Collapsed;
         StopButton.IsEnabled = true;
         ShareButton.Visibility = Visibility.Visible;
+        ViewButton.Visibility = Visibility.Visible;
     }
 
     private async void ShareButton_Click(object sender, RoutedEventArgs e)
@@ -37,23 +41,43 @@ public partial class MainWindow : Window
         {
             var displays = ScreenCapture.GetDisplays();
             var windows = ScreenCapture.GetWindows();
-            var windowHandles = windows.Select(w => w.hwnd).ToArray();
-            var windowNames = windows.Select(w => w.name).ToArray();
             
-            var selectionWindow = new SelectionWindow(displays, windowNames);
+            var selectionWindow = new SelectionWindow(displays, windows);
             if (selectionWindow.ShowDialog() != true) return;
 
             var selectedIndex = selectionWindow.SelectedIndex;
             var displayIndex = selectedIndex < displays.Length ? selectedIndex : 0;
-            var windowHandle = selectedIndex >= displays.Length ? windowHandles[selectedIndex - displays.Length] : IntPtr.Zero;
+            var windowHandle = selectedIndex >= displays.Length ? windows[selectedIndex - displays.Length].hwnd : IntPtr.Zero;
 
             ShareButton.Visibility = Visibility.Collapsed;
+            ViewButton.Visibility = Visibility.Collapsed;
             StopButton.Visibility = Visibility.Visible;
             
             _webrtc = new WebRTCClient();
             await _webrtc.InitializeAsync();
             
             _capture = new ScreenCapture();
+            _capture.OnCaptureStopped += () =>
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    var capture = _capture;
+                    var webrtc = _webrtc;
+                    _capture = null;
+                    _webrtc = null;
+                    _bitmap = null;
+                    PreviewImage.Source = null;
+                    Title = "MainWindow";
+                    StopButton.Visibility = Visibility.Collapsed;
+                    ShareButton.Visibility = Visibility.Visible;
+                    ViewButton.Visibility = Visibility.Visible;
+                    
+                    capture?.Dispose();
+                    webrtc?.Dispose();
+                    
+                    MessageBox.Show("Stream stopped - Window was closed", "Stream Stopped", MessageBoxButton.OK, MessageBoxImage.Information);
+                });
+            };
             _capture.OnFrameCaptured += (data, width, height) =>
             {
                 _webrtc?.SendFrame(data, width, height);

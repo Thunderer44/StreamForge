@@ -1,0 +1,38 @@
+<Window x:Class="ScreenShareApp.ViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Stream Viewer" Height="600" Width="800"
+        WindowStartupLocation="CenterScreen" Background="#1a1a1a">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <Border Grid.Row="0" Background="#2F3136" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" Text="Server:" Foreground="White" 
+                           VerticalAlignment="Center" Margin="0,0,10,0" FontSize="14"/>
+                <TextBox x:Name="ServerUrlBox" Grid.Column="1" Text="ws://localhost:8080" 
+                         Height="32" Padding="8" FontSize="14" VerticalContentAlignment="Center"/>
+                <Button x:Name="ConnectButton" Grid.Column="2" Content="Connect" 
+                        Width="100" Height="32" Margin="10,0,0,0"
+                        Click="ConnectButton_Click" Background="#5865F2" 
+                        Foreground="White" BorderThickness="0" FontSize="14" FontWeight="SemiBold"/>
+            </Grid>
+        </Border>
+        
+        <Grid Grid.Row="1">
+            <Image x:Name="StreamImage" Stretch="Uniform"/>
+            <TextBlock x:Name="StatusText" Text="Not connected" 
+                       Foreground="#B9BBBE" FontSize="16"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</Window>

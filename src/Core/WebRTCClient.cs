@@ -12,14 +12,12 @@ namespace ScreenShareApp
     public class WebRTCClient : IDisposable
     {
         private ClientWebSocket? _ws;
-        private bool _isRunning;
         private bool _isSending;
 
         public async Task InitializeAsync()
         {
             _ws = new ClientWebSocket();
             await _ws.ConnectAsync(new Uri("ws://localhost:8080"), CancellationToken.None);
-            _isRunning = true;
         }
 
         public Task ConnectSignalingAsync() => Task.CompletedTask;
@@ -55,7 +53,6 @@ namespace ScreenShareApp
 
         public void Dispose()
         {
-            _isRunning = false;
             _ws?.Dispose();
         }
     }

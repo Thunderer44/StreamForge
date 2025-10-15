@@ -9,8 +9,10 @@ A Windows desktop application for screen and window capture with a Discord-style
 - **WebSocket Streaming**: Real-time frame streaming via WebSocket with GZip compression
 - **Discord-Style UI**: Tabbed selection interface for screens and windows
 - **Live Preview**: Real-time preview of captured content
+- **Stream Viewer**: Built-in viewer to watch streams from other instances
 - **Multi-Display Support**: Capture from any connected display
 - **Smart Window Filtering**: Automatically filters out small and hidden windows
+- **Window Thumbnails**: Live preview thumbnails in selection window (updates every 2 seconds)
 
 ## Requirements
 
@@ -27,29 +29,42 @@ A Windows desktop application for screen and window capture with a Discord-style
    ```
 3. Install Node.js dependencies:
    ```bash
+   cd server
    npm install
+   cd ..
    ```
 
 ## Usage
 
-### Local Testing
+### Sharing Your Screen
 
 1. Start the WebSocket server:
    ```bash
-   node signaling-server.js
+   node server/signaling-server.js
    ```
 
-2. Open `viewer.html` in a web browser
-
-3. Start the application:
+2. Start the application:
    ```bash
    dotnet run
    ```
 
-4. Click "Share Screen" button
-5. Select a display or window from the Discord-style selection UI
-6. View live preview in the main window and browser
-7. Click "Stop Stream" to stop capturing
+3. Click "Share Screen" button
+4. Select a display or window from the Discord-style selection UI
+5. Your screen is now streaming to the server
+6. Click "Stop Stream" to stop capturing
+
+### Viewing Someone's Stream
+
+1. Ensure the WebSocket server is running
+2. In the application, click "View Stream" button
+3. Enter the server URL (default: ws://localhost:8080)
+4. Click "Connect"
+5. You'll see the live stream from anyone sharing
+
+### Alternative Viewers
+
+- **HTML Viewer**: Open `viewers/viewer.html` in a web browser for local viewing
+- **Remote HTML Viewer**: Open `viewers/viewer-remote.html` for remote viewing
 
 ### Remote Testing
 
@@ -57,34 +72,47 @@ For testing on mobile devices or remote access, you have multiple options:
 
 **Option 1: VSCode Port Forwarding (Easiest)**
 1. Forward ports 8080 and 5500 in VSCode (set to Public)
-2. Open `viewer-remote.html` via Live Server
+2. Open `viewers/viewer-remote.html` via Live Server
 3. Access from any device using the forwarded URLs
 
-**See [VSCODE_SETUP.md](VSCODE_SETUP.md) for step-by-step instructions**
+**See [docs/VSCODE_SETUP.md](docs/VSCODE_SETUP.md) for step-by-step instructions**
 
 **Option 2: Local Network or Router Port Forwarding**
 
-**See [NETWORK_SETUP.md](NETWORK_SETUP.md) for detailed configuration**
+**See [docs/NETWORK_SETUP.md](docs/NETWORK_SETUP.md) for detailed configuration**
 
 ## Project Structure
 
-### Application Files
-- `MainWindow.xaml/cs` - Main application window with live preview
-- `SelectionWindow.xaml/cs` - Discord-themed selection UI
-- `ScreenCapture.cs` - Core capture logic (DXGI Desktop Duplication + GDI PrintWindow)
-- `WebRTCClient.cs` - WebSocket client with GZip compression and frame skipping
-- `ScreenShareApp.csproj` - .NET 8.0 WPF project configuration
+```
+StreamForge/
+├── src/                           # .NET Application Source
+│   ├── Core/                      # Core Logic
+│   │   ├── ScreenCapture.cs       # DXGI/GDI capture implementation
+│   │   └── WebRTCClient.cs        # WebSocket client with compression
+│   ├── UI/                        # User Interface
+│   │   ├── MainWindow.xaml/cs     # Main window with live preview
+│   │   ├── SelectionWindow.xaml/cs # Discord-style selection UI
+│   │   └── ViewerWindow.xaml/cs   # Stream viewer window
+│   ├── App.xaml/cs                # Application entry point
+│   └── AssemblyInfo.cs            # Assembly metadata
+├── server/                        # Node.js WebSocket Server
+│   ├── signaling-server.js        # WebSocket broadcast server
+│   ├── package.json               # Node.js dependencies
+│   └── package-lock.json          # Dependency lock file
+├── viewers/                       # HTML Viewers
+│   ├── viewer.html                # Local viewer (localhost)
+│   └── viewer-remote.html         # Remote viewer (configurable URL)
+├── docs/                          # Documentation
+│   ├── VSCODE_SETUP.md            # VSCode port forwarding guide
+│   └── NETWORK_SETUP.md           # Network configuration guide
+├── ScreenShareApp.csproj          # .NET application project
+├── ScreenShareApp.sln             # Visual Studio solution
+├── .gitignore                     # Git ignore rules
+├── README.md                      # This file
+└── STRUCTURE.md                   # Project structure guide
+```
 
-### Server & Viewers
-- `signaling-server.js` - WebSocket broadcast server (Node.js)
-- `viewer.html` - Local browser viewer (localhost testing)
-- `viewer-remote.html` - Remote browser viewer with configurable WebSocket URL
-- `package.json` - Node.js dependencies (ws library)
-
-### Documentation
-- `README.md` - Project overview and quick start guide
-- `VSCODE_SETUP.md` - VSCode port forwarding setup guide
-- `NETWORK_SETUP.md` - Comprehensive network configuration guide
+**See [STRUCTURE.md](STRUCTURE.md) for detailed structure documentation**
 
 ## Technologies
 
