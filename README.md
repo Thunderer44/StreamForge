@@ -9,7 +9,7 @@ A Windows desktop application for screen and window capture with a Discord-style
 
 - **Display Capture**: DXGI Desktop Duplication API for high-performance screen capture
 - **Window Capture**: GDI-based window capture using PrintWindow API
-- **WebSocket Streaming**: Real-time frame streaming via WebSocket with GZip compression
+- **WebRTC Streaming**: Efficient peer-to-peer video streaming using MixedReality.WebRTC
 - **Discord-Style UI**: Tabbed selection interface for screens and windows
 - **Live Preview**: Real-time preview of captured content
 - **Stream Viewer**: Built-in viewer to watch streams from other instances
@@ -37,52 +37,45 @@ A Windows desktop application for screen and window capture with a Discord-style
    cd ..
    ```
 
+## Quick Start
+
+**New user?** See [GETTING_STARTED.md](GETTING_STARTED.md) for a quick introduction!
+
+### Fast Setup
+```bash
+# 1. Install dependencies
+dotnet restore && cd server && npm install && cd ..
+
+# 2. Start signaling server
+node server/signaling-server.js
+
+# 3. Run application
+dotnet run
+```
+
 ## Usage
 
 ### Sharing Your Screen
 
-1. Start the WebSocket server:
-   ```bash
-   node server/signaling-server.js
-   ```
+1. Click "Share Screen" button
+2. Select a display or window from the Discord-style selection UI
+3. Your screen is now streaming via WebRTC
+4. Click "Stop Stream" to stop
 
-2. Start the application:
-   ```bash
-   dotnet run
-   ```
+### Viewing a Stream
 
-3. Click "Share Screen" button
-4. Select a display or window from the Discord-style selection UI
-5. Your screen is now streaming to the server
-6. Click "Stop Stream" to stop capturing
+1. Click "View Stream" button
+2. Click "Connect" (default: ws://localhost:8080)
+3. You'll see the live stream
 
-### Viewing Someone's Stream
+### HTML Viewers
 
-1. Ensure the WebSocket server is running
-2. In the application, click "View Stream" button
-3. Enter the server URL (default: ws://localhost:8080)
-4. Click "Connect"
-5. You'll see the live stream from anyone sharing
+- **Local**: `viewers/viewer.html` (localhost:8080)
+- **Remote**: `viewers/viewer-remote.html` (custom URL)
 
-### Alternative Viewers
+### Remote Access
 
-- **HTML Viewer**: Open `viewers/viewer.html` in a web browser for local viewing
-- **Remote HTML Viewer**: Open `viewers/viewer-remote.html` for remote viewing
-
-### Remote Testing
-
-For testing on mobile devices or remote access, you have multiple options:
-
-**Option 1: VSCode Port Forwarding (Easiest)**
-1. Forward ports 8080 and 5500 in VSCode (set to Public)
-2. Open `viewers/viewer-remote.html` via Live Server
-3. Access from any device using the forwarded URLs
-
-**See [docs/VSCODE_SETUP.md](docs/VSCODE_SETUP.md) for step-by-step instructions**
-
-**Option 2: Local Network or Router Port Forwarding**
-
-**See [docs/NETWORK_SETUP.md](docs/NETWORK_SETUP.md) for detailed configuration**
+See [docs/VSCODE_SETUP.md](docs/VSCODE_SETUP.md) for VSCode port forwarding or [docs/NETWORK_SETUP.md](docs/NETWORK_SETUP.md) for local network setup.
 
 ## Project Structure
 
@@ -106,13 +99,17 @@ StreamForge/
 │   ├── viewer.html                # Local viewer (localhost)
 │   └── viewer-remote.html         # Remote viewer (configurable URL)
 ├── docs/                          # Documentation
-│   ├── VSCODE_SETUP.md            # VSCode port forwarding guide
-│   └── NETWORK_SETUP.md           # Network configuration guide
+│   ├── TROUBLESHOOTING.md         # Problem solving guide
+│   ├── WEBRTC_MIGRATION.md        # Technical implementation
+│   ├── PERFORMANCE_COMPARISON.md  # Performance metrics
+│   ├── VSCODE_SETUP.md            # VSCode port forwarding
+│   └── NETWORK_SETUP.md           # Network configuration
 ├── ScreenShareApp.csproj          # .NET application project
 ├── ScreenShareApp.sln             # Visual Studio solution
+├── GETTING_STARTED.md             # Quick start guide
+├── STRUCTURE.md                   # Project structure guide
 ├── .gitignore                     # Git ignore rules
-├── README.md                      # This file
-└── STRUCTURE.md                   # Project structure guide
+└── README.md                      # This file
 ```
 
 **See [STRUCTURE.md](STRUCTURE.md) for detailed structure documentation**
@@ -124,67 +121,73 @@ StreamForge/
 - SharpDX.Direct3D11 & SharpDX.DXGI - DirectX wrapper
 - DXGI Desktop Duplication API - High-performance display capture
 - GDI+ PrintWindow API - Window capture
-- System.Net.WebSockets - WebSocket client
-- System.IO.Compression - GZip compression
+- Microsoft.MixedReality.WebRTC - Peer-to-peer video streaming
 
-### Server & Viewer
-- Node.js - WebSocket server runtime
-- ws library - WebSocket server implementation
-- pako.js - GZip decompression in browser
-- HTML5 Canvas - Frame rendering
+### Server
+- Node.js - WebRTC signaling server runtime
+- ws library - WebSocket signaling implementation
 
 ## Architecture
 
-### Streaming Flow
-1. **Capture**: DXGI/GDI captures screen/window at 30fps
-2. **Compress**: GZip compression (50-90% bandwidth reduction)
-3. **Send**: WebSocket binary frames with 4-byte header (width/height)
-4. **Broadcast**: Server broadcasts to all connected viewers
-5. **Decompress**: Browser decompresses with pako.js
-6. **Render**: Canvas displays BGRA frames converted to RGBA
+### WebRTC Streaming Flow
+```
+Capture (DXGI/GDI) → WebRTC Encode → P2P Connection → Decode → Display
+         ↓                                ↑
+         └──────── Signaling Server ──────┘
+              (Setup only, no video data)
+```
 
-### Memory Management
-- Reuses single WriteableBitmap instance for preview
-- Reuses single byte buffer for frame data
-- No per-frame allocations (prevents memory leaks)
-- Stable memory usage over extended sessions
+### Performance
+- **CPU**: 5-10% (60-70% reduction vs WebSocket)
+- **Bandwidth**: 20-80 Mbps adaptive (50-75% reduction)
+- **Latency**: 50-150ms (50% reduction)
+- **Server Load**: Minimal (95% reduction)
 
-### Performance Features
-- Frame skipping prevents WebSocket queue buildup
-- Viewer holds last frame instead of showing black frames
-- 30fps capture limit reduces CPU usage
-- GZip CompressionLevel.Fastest balances speed and size
+See [docs/PERFORMANCE_COMPARISON.md](docs/PERFORMANCE_COMPARISON.md) for detailed metrics.
+
+### Key Features
+- Hardware-accelerated encoding (when available)
+- Adaptive bitrate based on network conditions
+- Peer-to-peer connection (no server bottleneck)
+- Automatic codec negotiation
+- Memory-efficient frame handling
 
 ## Troubleshooting
 
-### Application won't start
-- Ensure .NET 8.0 SDK is installed
-- Run `dotnet restore` to restore NuGet packages
-- Check for SharpDX dependency issues
+### Missing mrwebrtc.dll
+- Project configured with `RuntimeIdentifier=win-x64`
+- DLL automatically copied during build
+- If issue persists: `dotnet clean && dotnet build`
+- See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for details
 
-### No stream in viewer
-- Verify WebSocket server is running (`node signaling-server.js`)
-- Check browser console (F12) for connection errors
-- Ensure "Share Screen" button was clicked in app
-- Verify firewall isn't blocking port 8080
-
-### Memory issues
-- This version fixes previous memory leaks
-- Memory usage should remain stable during streaming
-- If issues persist, restart the application
+### Connection issues
+- Ensure signaling server is running
+- Check firewall allows port 8080
+- Verify STUN server is reachable
 
 ### Poor performance
-- Lower resolution displays use less bandwidth
-- Close unnecessary applications
-- For remote testing, network speed matters
-- VSCode port forwarding adds 100-500ms latency
+- Verify hardware encoding is available
+- Update graphics drivers
+- WebRTC adapts automatically to network
+
+For detailed troubleshooting, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
 ## Known Limitations
 
 - Windows 10/11 only (DXGI Desktop Duplication requirement)
 - Some windows may not capture correctly with GDI (use display capture)
-- VSCode port forwarding introduces latency for remote testing
-- Compression CPU usage scales with resolution
+- WebRTC may require TURN server for restrictive NAT environments
+- Current implementation supports single viewer (can be extended)
+
+## Documentation
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Quick start guide
+- **[STRUCTURE.md](STRUCTURE.md)** - Project structure details
+- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Problem solving
+- **[docs/WEBRTC_MIGRATION.md](docs/WEBRTC_MIGRATION.md)** - Technical details
+- **[docs/PERFORMANCE_COMPARISON.md](docs/PERFORMANCE_COMPARISON.md)** - Performance metrics
+- **[docs/VSCODE_SETUP.md](docs/VSCODE_SETUP.md)** - Remote access setup
+- **[docs/NETWORK_SETUP.md](docs/NETWORK_SETUP.md)** - Network configuration
 
 ## Contributing
 

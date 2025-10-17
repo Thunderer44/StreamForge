@@ -9,11 +9,21 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
     <PackageReference Include="SharpDX.DXGI" Version="4.2.0" />
+    <PackageReference Include="Microsoft.MixedReality.WebRTC" Version="2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(NuGetPackageRoot)microsoft.mixedreality.webrtc\2.0.2\runtimes\win10-x64\native\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -38,5 +48,12 @@
       <Link>ViewerWindow.xaml</Link>
     </Page>
   </ItemGroup>
+
+  <Target Name="CopyWebRTCNative" AfterTargets="Build">
+    <ItemGroup>
+      <WebRTCNative Include="$(NuGetPackageRoot)microsoft.mixedreality.webrtc\2.0.2\runtimes\win10-x64\native\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WebRTCNative)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

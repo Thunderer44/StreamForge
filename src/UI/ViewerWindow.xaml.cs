@@ -1,21 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
 using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using Microsoft.MixedReality.WebRTC;
 
 namespace ScreenShareApp
 {
     public partial class ViewerWindow : Window
     {
-        private ClientWebSocket? _ws;
+        private PeerConnection? _peer;
+        private ClientWebSocket? _signaling;
         private CancellationTokenSource? _cts;
         private WriteableBitmap? _bitmap;
         private bool _isConnected;
+        private DateTime _lastFrameTime;
 
         public ViewerWindow()
         {
@@ -37,10 +40,54 @@ namespace ScreenShareApp
                 ServerUrlBox.IsEnabled = false;
                 StatusText.Text = "Connecting...";
 
-                _ws = new ClientWebSocket();
                 _cts = new CancellationTokenSource();
+                _peer = new PeerConnection();
                 
-                await _ws.ConnectAsync(new Uri(ServerUrlBox.Text), _cts.Token);
+                var config = new PeerConnectionConfiguration
+                {
+                    IceServers = new List<IceServer>
+                    {
+                        new IceServer { Urls = { "stun:stun.l.google.com:19302" } }
+                    }
+                };
+                await _peer.InitializeAsync(config);
+                
+                _peer.AddTransceiver(MediaKind.Video);
+                
+                _peer.VideoTrackAdded += (RemoteVideoTrack track) =>
+                {
+                    track.Argb32VideoFrameReady += (Argb32VideoFrame frame) =>
+                    {
+                        _lastFrameTime = DateTime.Now;
+                        
+                        var width = (int)frame.width;
+                        var height = (int)frame.height;
+                        var stride = (int)frame.stride;
+                        var data = new byte[height * stride];
+                        
+                        unsafe
+                        {
+                            var ptr = (byte*)frame.data.ToPointer();
+                            for (int i = 0; i < data.Length; i++)
+                                data[i] = ptr[i];
+                        }
+                        
+                        Dispatcher.BeginInvoke(() => RenderFrame(data, width, height));
+                    };
+                };
+                
+                _peer.LocalSdpReadytoSend += async (SdpMessage msg) =>
+                {
+                    await SendSignalingMessage(new { type = msg.Type.ToString().ToLower(), sdp = msg.Content });
+                };
+                
+                _peer.IceCandidateReadytoSend += async (IceCandidate candidate) =>
+                {
+                    await SendSignalingMessage(new { type = "candidate", candidate = candidate.Content, sdpMid = candidate.SdpMid, sdpMLineIndex = candidate.SdpMlineIndex });
+                };
+                
+                _signaling = new ClientWebSocket();
+                await _signaling.ConnectAsync(new Uri(ServerUrlBox.Text), _cts.Token);
                 
                 _isConnected = true;
                 ConnectButton.Content = "Disconnect";
@@ -48,7 +95,9 @@ namespace ScreenShareApp
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#ED4245"));
                 StatusText.Text = "Waiting for stream...";
                 
-                _ = ReceiveLoop();
+                _lastFrameTime = DateTime.Now;
+                _ = ReceiveSignaling();
+                _ = MonitorConnection();
             }
             catch (Exception ex)
             {
@@ -61,88 +110,76 @@ namespace ScreenShareApp
             }
         }
 
-        private DateTime _lastFrameTime;
-        
-        private async Task ReceiveLoop()
+        private async Task SendSignalingMessage(object message)
         {
-            var buffer = new byte[1024 * 1024 * 10]; // 10MB buffer
-            _lastFrameTime = DateTime.Now;
-            
-            _ = Task.Run(async () =>
-            {
-                while (_isConnected)
-                {
-                    await Task.Delay(1000);
-                    if (_isConnected && (DateTime.Now - _lastFrameTime).TotalSeconds > 3)
-                    {
-                        await Dispatcher.InvokeAsync(() =>
-                        {
-                            if (_isConnected)
-                            {
-                                ShowDisconnectedFrame();
-                                StatusText.Text = "Stream ended - No frames received";
-                            }
-                        });
-                        break;
-                    }
-                }
-            });
-            
-            try
-            {
-                while (_isConnected && _ws?.State == WebSocketState.Open)
-                {
-                    using var ms = new MemoryStream();
-                    WebSocketReceiveResult result;
-                    
-                    do
-                    {
-                        result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), _cts!.Token);
-                        ms.Write(buffer, 0, result.Count);
-                    } while (!result.EndOfMessage);
+            if (_signaling?.State != WebSocketState.Open) return;
+            var json = JsonSerializer.Serialize(message);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await _signaling.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
 
-                    if (result.MessageType == WebSocketMessageType.Binary)
+        private async Task ReceiveSignaling()
+        {
+            var buffer = new byte[8192];
+            while (_isConnected && _signaling?.State == WebSocketState.Open)
+            {
+                try
+                {
+                    var result = await _signaling.ReceiveAsync(new ArraySegment<byte>(buffer), _cts!.Token);
+                    if (result.MessageType == WebSocketMessageType.Text || result.MessageType == WebSocketMessageType.Binary)
                     {
-                        var data = ms.ToArray();
-                        await Dispatcher.InvokeAsync(() => ProcessFrame(data));
-                        _lastFrameTime = DateTime.Now;
-                    }
-                    else if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await Dispatcher.InvokeAsync(() => ShowDisconnectedFrame());
-                        break;
+                        var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                        var msg = JsonSerializer.Deserialize<JsonElement>(json);
+                        var type = msg.GetProperty("type").GetString();
+                        
+                        if (type == "offer")
+                        {
+                            await _peer!.SetRemoteDescriptionAsync(new SdpMessage { Type = SdpMessageType.Offer, Content = msg.GetProperty("sdp").GetString()! });
+                            _peer.CreateAnswer();
+                        }
+                        else if (type == "answer")
+                        {
+                            await _peer!.SetRemoteDescriptionAsync(new SdpMessage { Type = SdpMessageType.Answer, Content = msg.GetProperty("sdp").GetString()! });
+                        }
+                        else if (type == "candidate")
+                        {
+                            _peer!.AddIceCandidate(new IceCandidate
+                            {
+                                Content = msg.GetProperty("candidate").GetString()!,
+                                SdpMid = msg.GetProperty("sdpMid").GetString()!,
+                                SdpMlineIndex = msg.GetProperty("sdpMLineIndex").GetInt32()
+                            });
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                await Dispatcher.InvokeAsync(() => 
-                {
-                    if (_isConnected)
-                    {
-                        ShowDisconnectedFrame();
-                        StatusText.Text = $"Connection lost: {ex.Message}";
-                    }
-                });
+                catch { break; }
             }
         }
 
-        private void ProcessFrame(byte[] data)
+        private async Task MonitorConnection()
+        {
+            while (_isConnected)
+            {
+                await Task.Delay(1000);
+                if (_isConnected && (DateTime.Now - _lastFrameTime).TotalSeconds > 3)
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        if (_isConnected)
+                        {
+                            ShowDisconnectedFrame();
+                            StatusText.Text = "Stream ended - No frames received";
+                        }
+                    });
+                    break;
+                }
+            }
+        }
+
+        private void RenderFrame(byte[] data, int width, int height)
         {
             try
             {
-                if (data.Length < 4) return;
-
-                var width = (data[0] << 8) | data[1];
-                var height = (data[2] << 8) | data[3];
-
-                using var compressedStream = new MemoryStream(data, 4, data.Length - 4);
-                using var gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress);
-                using var decompressedStream = new MemoryStream();
-                
-                gzipStream.CopyTo(decompressedStream);
-                var frameData = decompressedStream.ToArray();
-
                 if (_bitmap == null || _bitmap.PixelWidth != width || _bitmap.PixelHeight != height)
                 {
                     _bitmap = new WriteableBitmap(width, height, 96, 96, 
@@ -152,7 +189,7 @@ namespace ScreenShareApp
                 }
 
                 _bitmap.WritePixels(new System.Windows.Int32Rect(0, 0, width, height), 
-                    frameData, width * 4, 0);
+                    data, width * 4, 0);
                 
                 Title = $"Stream Viewer - {width}x{height}";
             }
@@ -252,8 +289,11 @@ namespace ScreenShareApp
         {
             _isConnected = false;
             _cts?.Cancel();
-            _ws?.Dispose();
-            _ws = null;
+            _peer?.Close();
+            _peer?.Dispose();
+            _signaling?.Dispose();
+            _peer = null;
+            _signaling = null;
             _cts = null;
             _bitmap = null;
             

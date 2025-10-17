@@ -1,75 +1,168 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Screen Share Viewer</title>
+    <title>StreamForge WebRTC Viewer</title>
     <style>
-        body { margin: 0; padding: 20px; background: #1a1a1a; font-family: Arial; }
-        #status { color: #fff; margin-bottom: 10px; }
-        #serverInput { padding: 8px; width: 300px; margin-right: 10px; }
-        #connectBtn { padding: 8px 20px; cursor: pointer; }
-        canvas { border: 2px solid #5865F2; max-width: 100%; display: block; margin-top: 10px; }
+        body { margin: 0; padding: 20px; background: #1a1a1a; font-family: Arial; color: #fff; }
+        #controls { margin-bottom: 15px; }
+        #serverInput { padding: 8px; width: 300px; margin-right: 10px; background: #2a2a2a; color: #fff; border: 1px solid #5865F2; }
+        #connectBtn { padding: 8px 20px; cursor: pointer; background: #5865F2; color: #fff; border: none; }
+        #connectBtn:hover { background: #4752C4; }
+        #status { margin-bottom: 10px; font-size: 14px; }
+        #log { font-family: monospace; font-size: 11px; max-height: 150px; overflow-y: auto; background: #000; padding: 10px; margin-bottom: 10px; }
+        video { border: 2px solid #5865F2; max-width: 100%; display: block; background: #000; }
     </style>
 </head>
 <body>
-    <div>
-        <input type="text" id="serverInput" placeholder="ws://192.168.1.x:8080" />
+    <div id="controls">
+        <input type="text" id="serverInput" placeholder="Enter signaling server URL (e.g., wss://xxx.xxx:8080)" value="ws://localhost:8080" />
         <button id="connectBtn">Connect</button>
     </div>
-    <div id="status">Enter server address and click Connect</div>
-    <canvas id="canvas"></canvas>
+    <div id="status">Enter signaling server URL and click Connect</div>
+    <div id="log"></div>
+    <video id="video" autoplay playsinline></video>
     
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('video');
         const status = document.getElementById('status');
         const serverInput = document.getElementById('serverInput');
         const connectBtn = document.getElementById('connectBtn');
+        const log = document.getElementById('log');
+        
+        function addLog(msg) {
+            console.log(msg);
+            log.innerHTML += msg + '<br>';
+            log.scrollTop = log.scrollHeight;
+        }
         
         let ws = null;
+        let pc = null;
 
-        connectBtn.onclick = () => {
-            const serverUrl = serverInput.value || 'ws://localhost:8080';
-            if (ws) ws.close();
+        connectBtn.onclick = async () => {
+            const serverUrl = serverInput.value;
+            if (!serverUrl) {
+                status.textContent = 'Please enter signaling server URL';
+                return;
+            }
             
-            status.textContent = 'Connecting...';
-            ws = new WebSocket(serverUrl);
-            ws.binaryType = 'arraybuffer';
-
-            ws.onmessage = async (event) => {
-                if (event.data instanceof ArrayBuffer) {
-                    const data = new Uint8Array(event.data);
-                    const width = (data[0] << 8) | data[1];
-                    const height = (data[2] << 8) | data[3];
+            if (ws) ws.close();
+            if (pc) pc.close();
+            log.innerHTML = '';
+            
+            status.textContent = 'Connecting to signaling server...';
+            addLog('Connecting to ' + serverUrl);
+            
+            try {
+                ws = new WebSocket(serverUrl);
+                
+                pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+                
+                pc.ontrack = (event) => {
+                    addLog('✅ Track received: ' + event.track.kind);
+                    addLog('Track enabled: ' + event.track.enabled);
+                    addLog('Track muted: ' + event.track.muted);
+                    addLog('Track readyState: ' + event.track.readyState);
+                    addLog('Streams count: ' + event.streams.length);
                     
-                    if (canvas.width !== width || canvas.height !== height) {
-                        canvas.width = width;
-                        canvas.height = height;
+                    // Create stream from track if not provided
+                    let stream;
+                    if (event.streams.length > 0) {
+                        stream = event.streams[0];
+                        addLog('Using provided stream: ' + stream.id);
+                    } else {
+                        stream = new MediaStream([event.track]);
+                        addLog('⚠️ Created new stream from track: ' + stream.id);
                     }
                     
-                    const compressed = data.slice(4);
-                    const ds = new DecompressionStream('gzip');
-                    const blob = new Blob([compressed]);
-                    const decompressed = await new Response(blob.stream().pipeThrough(ds)).arrayBuffer();
-                    const frameData = new Uint8Array(decompressed);
+                    addLog('Stream active: ' + stream.active);
+                    addLog('Stream video tracks: ' + stream.getVideoTracks().length);
                     
-                    const imageData = ctx.createImageData(width, height);
+                    video.onloadedmetadata = () => {
+                        addLog('📺 Video metadata: ' + video.videoWidth + 'x' + video.videoHeight);
+                    };
+                    video.onloadeddata = () => addLog('Video data loaded');
+                    video.oncanplay = () => addLog('Video can play');
+                    video.onplay = () => addLog('▶️ Video playing');
+                    video.onerror = (e) => addLog('❌ Video error');
                     
-                    // Convert BGRA to RGBA
-                    for (let i = 0; i < frameData.length; i += 4) {
-                        imageData.data[i] = frameData[i + 2];     // R
-                        imageData.data[i + 1] = frameData[i + 1]; // G
-                        imageData.data[i + 2] = frameData[i];     // B
-                        imageData.data[i + 3] = frameData[i + 3]; // A
+                    video.srcObject = stream;
+                    addLog('Set video.srcObject');
+                    video.play().then(() => {
+                        addLog('✅ Play() succeeded');
+                    }).catch(e => {
+                        addLog('❌ Play failed: ' + e.message);
+                    });
+                    status.textContent = 'Receiving stream!';
+                };
+                
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        addLog('Sending ICE candidate');
+                        ws.send(JSON.stringify({
+                            type: 'candidate',
+                            candidate: event.candidate.candidate,
+                            sdpMid: event.candidate.sdpMid,
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
+                        }));
                     }
-                    
-                    ctx.putImageData(imageData, 0, 0);
-                    status.textContent = `Receiving: ${width}x${height}`;
-                }
-            };
-
-            ws.onopen = () => status.textContent = 'Connected! Waiting for stream...';
-            ws.onerror = () => status.textContent = 'Connection error';
-            ws.onclose = () => status.textContent = 'Disconnected';
+                };
+                
+                pc.oniceconnectionstatechange = () => {
+                    addLog('ICE state: ' + pc.iceConnectionState);
+                };
+                
+                ws.onopen = () => {
+                    status.textContent = 'Connected! Waiting for stream...';
+                    addLog('✅ WebSocket connected');
+                };
+                
+                ws.onmessage = async (event) => {
+                    try {
+                        let data = event.data;
+                        if (data instanceof Blob) {
+                            data = await data.text();
+                        }
+                        const msg = JSON.parse(data);
+                        addLog('Received: ' + msg.type);
+                        
+                        if (msg.type === 'offer') {
+                            addLog('Setting remote description (offer)');
+                            await pc.setRemoteDescription({ type: 'offer', sdp: msg.sdp });
+                            addLog('Creating answer');
+                            const answer = await pc.createAnswer();
+                            await pc.setLocalDescription(answer);
+                            addLog('Sending answer via WebSocket');
+                            const answerMsg = JSON.stringify({ type: 'answer', sdp: answer.sdp });
+                            ws.send(answerMsg);
+                            addLog('✅ Answer sent!');
+                        } else if (msg.type === 'candidate') {
+                            addLog('Adding ICE candidate');
+                            await pc.addIceCandidate({
+                                candidate: msg.candidate,
+                                sdpMid: msg.sdpMid,
+                                sdpMLineIndex: msg.sdpMLineIndex
+                            });
+                        }
+                    } catch (err) {
+                        addLog('❌ Message error: ' + err.message);
+                    }
+                };
+                
+                ws.onerror = (e) => {
+                    status.textContent = 'Connection error';
+                    addLog('❌ WebSocket error');
+                };
+                ws.onclose = () => {
+                    status.textContent = 'Disconnected';
+                    addLog('WebSocket closed');
+                };
+                
+            } catch (err) {
+                status.textContent = 'Error: ' + err.message;
+                addLog('❌ Error: ' + err.message);
+            }
         };
     </script>
 </body>

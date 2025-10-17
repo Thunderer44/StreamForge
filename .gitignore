@@ -4,6 +4,7 @@
 # User-specific files
 *.suo
 *.user
+Properties/
 *.userosscache
 *.sln.docstates
 
@@ -59,3 +60,15 @@ Desktop.ini
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Temporary files
+COMMIT_MESSAGE.txt
+
+# Build artifacts
+*.dll
+*.exe
+*.pdb
+!mrwebrtc.dll
+
+# Temporary WPF files
+*_wpftmp.csproj

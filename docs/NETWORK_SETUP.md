@@ -55,41 +55,15 @@ You should see:
 
 ## Testing with VSCode Port Forwarding (Easiest)
 
-### Step 1: Forward Ports in VSCode
+**📝 See [VSCODE_SETUP.md](VSCODE_SETUP.md) for complete step-by-step guide**
 
-1. **Forward WebSocket Server (Port 8080):**
-   - Open VSCode Command Palette (Ctrl+Shift+P)
-   - Type "Forward a Port"
-   - Enter `8080`
-   - Right-click the forwarded port → Change Port Visibility → **Public**
-   - Copy the forwarded URL (e.g., `https://xxxx-xx-xx-xx-xx.ngrok-free.app`)
+**Quick Summary:**
+1. Forward port 8080 (WebSocket) and 5500 (Live Server) in VSCode
+2. Set both to **Public** visibility
+3. Use `wss://` (not `ws://`) for HTTPS forwarded URLs
+4. Access viewer from any device with internet
 
-2. **Forward Live Server (Port 5500):**
-   - Forward port `5500`
-   - Set visibility to **Public**
-   - Copy the forwarded URL
-
-### Step 2: Update WebSocket URL
-
-**Important:** VSCode port forwarding uses HTTPS, so WebSocket must use WSS (secure WebSocket)
-
-- If forwarded URL is: `https://xxxx-8080.app.github.dev`
-- WebSocket URL is: `wss://xxxx-8080.app.github.dev`
-
-### Step 3: Access from Any Device
-
-1. Open the Live Server URL on any device: `https://xxxx-5500.app.github.dev/viewer-remote.html`
-2. Enter WebSocket URL: `wss://xxxx-8080.app.github.dev` (note: `wss://` not `ws://`)
-3. Click "Connect"
-4. Start streaming from desktop app
-
-**📝 See [VSCODE_SETUP.md](VSCODE_SETUP.md) for detailed step-by-step guide**
-
-✅ **Advantages:**
-- No router configuration needed
-- Works from anywhere with internet
-- Automatic HTTPS/WSS encryption
-- No firewall changes required
+**Advantages:** No router config, works anywhere, automatic encryption
 
 ## Testing Over Internet (Router Port Forwarding)
 
