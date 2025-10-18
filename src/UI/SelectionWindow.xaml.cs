@@ -56,10 +56,10 @@ namespace ScreenShareApp
 
         private void ShowScreens()
         {
-            ScreensTab.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#5865F2"));
+            ScreensTab.Background = (System.Windows.Media.Brush)Application.Current.Resources["DiscordBlurple"];
             ScreensTab.Foreground = System.Windows.Media.Brushes.White;
-            WindowsTab.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4F545C"));
-            WindowsTab.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#B9BBBE"));
+            WindowsTab.Background = (System.Windows.Media.Brush)Application.Current.Resources["DiscordGray"];
+            WindowsTab.Foreground = (System.Windows.Media.Brush)Application.Current.Resources["DiscordMutedText"];
             
             var items = _screens.Select((s, i) => new ShareItem { Name = s, Icon = "🖥", Index = i }).ToList();
             ItemsGrid.ItemsSource = items;
@@ -67,10 +67,10 @@ namespace ScreenShareApp
 
         private void ShowWindows()
         {
-            WindowsTab.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#5865F2"));
+            WindowsTab.Background = (System.Windows.Media.Brush)Application.Current.Resources["DiscordBlurple"];
             WindowsTab.Foreground = System.Windows.Media.Brushes.White;
-            ScreensTab.Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#4F545C"));
-            ScreensTab.Foreground = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#B9BBBE"));
+            ScreensTab.Background = (System.Windows.Media.Brush)Application.Current.Resources["DiscordGray"];
+            ScreensTab.Foreground = (System.Windows.Media.Brush)Application.Current.Resources["DiscordMutedText"];
             
             _currentWindowItems = _windows.Select((w, i) => new ShareItem 
             { 

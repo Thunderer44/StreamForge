@@ -23,7 +23,25 @@ namespace ScreenShareApp
         public ViewerWindow()
         {
             InitializeComponent();
+            StatusOverlay.Visibility = Visibility.Visible;
+            UpdateStatus("Disconnected", "Not connected", "Enter server URL and click Connect");
             Closed += (s, e) => Disconnect();
+        }
+        
+        private void UpdateStatus(string footer, string main, string sub)
+        {
+            FooterStatusText.Text = footer;
+            StatusText.Text = main;
+            StatusSubText.Text = sub;
+            
+            var color = footer switch
+            {
+                "Connected" => "DiscordGreen",
+                "Streaming" => "DiscordBlurple",
+                "Disconnected" => "DiscordGray",
+                _ => "DiscordGray"
+            };
+            StatusIndicator.Fill = (System.Windows.Media.Brush)Application.Current.Resources[color];
         }
 
         private async void ConnectButton_Click(object sender, RoutedEventArgs e)
@@ -38,7 +56,7 @@ namespace ScreenShareApp
             {
                 ConnectButton.IsEnabled = false;
                 ServerUrlBox.IsEnabled = false;
-                StatusText.Text = "Connecting...";
+                UpdateStatus("Connecting", "Establishing connection...", "Please wait");
 
                 _cts = new CancellationTokenSource();
                 _peer = new PeerConnection();
@@ -90,10 +108,9 @@ namespace ScreenShareApp
                 await _signaling.ConnectAsync(new Uri(ServerUrlBox.Text), _cts.Token);
                 
                 _isConnected = true;
-                ConnectButton.Content = "Disconnect";
-                ConnectButton.Background = new System.Windows.Media.SolidColorBrush(
-                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#ED4245"));
-                StatusText.Text = "Waiting for stream...";
+                ConnectButton.Content = "❌ Disconnect";
+                ConnectButton.Background = (System.Windows.Media.Brush)Application.Current.Resources["DiscordRed"];
+                UpdateStatus("Connected", "Waiting for stream...", "Stream will appear when available");
                 
                 _lastFrameTime = DateTime.Now;
                 _ = ReceiveSignaling();
@@ -101,8 +118,9 @@ namespace ScreenShareApp
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Connection failed: {ex.Message}";
+                UpdateStatus("Disconnected", "Connection failed", ex.Message);
                 ServerUrlBox.IsEnabled = true;
+                StatusOverlay.Visibility = Visibility.Visible;
             }
             finally
             {
@@ -168,7 +186,7 @@ namespace ScreenShareApp
                         if (_isConnected)
                         {
                             ShowDisconnectedFrame();
-                            StatusText.Text = "Stream ended - No frames received";
+                            UpdateStatus("Connected", "Stream ended", "No frames received");
                         }
                     });
                     break;
@@ -185,17 +203,20 @@ namespace ScreenShareApp
                     _bitmap = new WriteableBitmap(width, height, 96, 96, 
                         System.Windows.Media.PixelFormats.Bgra32, null);
                     StreamImage.Source = _bitmap;
-                    StatusText.Visibility = Visibility.Collapsed;
+                    StatusOverlay.Visibility = Visibility.Collapsed;
+                    UpdateStatus("Streaming", "", "");
                 }
 
                 _bitmap.WritePixels(new System.Windows.Int32Rect(0, 0, width, height), 
                     data, width * 4, 0);
                 
                 Title = $"Stream Viewer - {width}x{height}";
+                StreamInfoText.Text = $"{width}x{height} @ 30fps";
             }
             catch (Exception ex)
             {
-                StatusText.Text = $"Frame error: {ex.Message}";
+                UpdateStatus("Connected", "Frame error", ex.Message);
+                StatusOverlay.Visibility = Visibility.Visible;
             }
         }
 
@@ -298,12 +319,12 @@ namespace ScreenShareApp
             _bitmap = null;
             
             StreamImage.Source = null;
-            StatusText.Visibility = Visibility.Visible;
-            StatusText.Text = "Not connected";
-            ConnectButton.Content = "Connect";
-            ConnectButton.Background = new System.Windows.Media.SolidColorBrush(
-                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#5865F2"));
+            StatusOverlay.Visibility = Visibility.Visible;
+            UpdateStatus("Disconnected", "Not connected", "Enter server URL and click Connect");
+            ConnectButton.Content = "🔗 Connect";
+            ConnectButton.Background = (System.Windows.Media.Brush)Application.Current.Resources["DiscordBlurple"];
             ServerUrlBox.IsEnabled = true;
+            StreamInfoText.Text = "";
         }
     }
 }

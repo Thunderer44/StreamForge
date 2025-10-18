@@ -11,6 +11,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        UpdateStatus("Ready", "");
+    }
+    
+    private void UpdateStatus(string status, string info)
+    {
+        StatusText.Text = status;
+        InfoText.Text = info;
     }
 
     private void ViewButton_Click(object sender, RoutedEventArgs e)
@@ -28,11 +35,11 @@ public partial class MainWindow : Window
         _webrtc = null;
         _bitmap = null;
         PreviewImage.Source = null;
-        Title = "MainWindow";
+        HeaderText.Text = "Welcome to StreamForge";
         StopButton.Visibility = Visibility.Collapsed;
         StopButton.IsEnabled = true;
-        ShareButton.Visibility = Visibility.Visible;
-        ViewButton.Visibility = Visibility.Visible;
+        WelcomePanel.Visibility = Visibility.Visible;
+        UpdateStatus("Ready", "");
     }
 
     private async void ShareButton_Click(object sender, RoutedEventArgs e)
@@ -49,9 +56,9 @@ public partial class MainWindow : Window
             var displayIndex = selectedIndex < displays.Length ? selectedIndex : 0;
             var windowHandle = selectedIndex >= displays.Length ? windows[selectedIndex - displays.Length].hwnd : IntPtr.Zero;
 
-            ShareButton.Visibility = Visibility.Collapsed;
-            ViewButton.Visibility = Visibility.Collapsed;
+            WelcomePanel.Visibility = Visibility.Collapsed;
             StopButton.Visibility = Visibility.Visible;
+            UpdateStatus("Connecting", "Initializing WebRTC...");
             
             _webrtc = new WebRTCClient();
             await _webrtc.InitializeAsync();
@@ -67,10 +74,10 @@ public partial class MainWindow : Window
                     _webrtc = null;
                     _bitmap = null;
                     PreviewImage.Source = null;
-                    Title = "MainWindow";
+                    HeaderText.Text = "Welcome to StreamForge";
                     StopButton.Visibility = Visibility.Collapsed;
-                    ShareButton.Visibility = Visibility.Visible;
-                    ViewButton.Visibility = Visibility.Visible;
+                    WelcomePanel.Visibility = Visibility.Visible;
+                    UpdateStatus("Ready", "");
                     
                     capture?.Dispose();
                     webrtc?.Dispose();
@@ -87,8 +94,9 @@ public partial class MainWindow : Window
                     {
                         _bitmap = new System.Windows.Media.Imaging.WriteableBitmap(width, height, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null);
                         PreviewImage.Source = _bitmap;
+                        UpdateStatus("Streaming", $"Live at {width}x{height}");
                     }
-                    Title = $"Streaming: {width}x{height}";
+                    HeaderText.Text = $"🔴 Live - {width}x{height}";
                     _bitmap.WritePixels(new System.Windows.Int32Rect(0, 0, width, height), data, width * 4, 0);
                 });
             };

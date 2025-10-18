@@ -10,12 +10,13 @@ A Windows desktop application for screen and window capture with a Discord-style
 - **Display Capture**: DXGI Desktop Duplication API for high-performance screen capture
 - **Window Capture**: GDI-based window capture using PrintWindow API
 - **WebRTC Streaming**: Efficient peer-to-peer video streaming using MixedReality.WebRTC
-- **Discord-Style UI**: Tabbed selection interface for screens and windows
-- **Live Preview**: Real-time preview of captured content
-- **Stream Viewer**: Built-in viewer to watch streams from other instances
+- **Modern Discord-Style UI**: Beautiful dark theme with ModernWpf controls
+- **Sidebar Navigation**: Quick access to all features with status indicators
+- **Live Preview**: Real-time preview of captured content with resolution display
+- **Stream Viewer**: Built-in viewer with professional status overlay
 - **Multi-Display Support**: Capture from any connected display
 - **Smart Window Filtering**: Automatically filters out small and hidden windows
-- **Window Thumbnails**: Live preview thumbnails in selection window (updates every 2 seconds)
+- **Window Thumbnails**: Live preview thumbnails with hover effects (updates every 2 seconds)
 
 ## Requirements
 
@@ -118,6 +119,7 @@ StreamForge/
 
 ### Desktop Application
 - WPF (.NET 8.0) - UI framework
+- ModernWpf - Modern UI controls and theming
 - SharpDX.Direct3D11 & SharpDX.DXGI - DirectX wrapper
 - DXGI Desktop Duplication API - High-performance display capture
 - GDI+ PrintWindow API - Window capture
@@ -183,6 +185,7 @@ For detailed troubleshooting, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING
 
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** - Quick start guide
 - **[STRUCTURE.md](STRUCTURE.md)** - Project structure details
+- **[docs/UI_MODERNIZATION.md](docs/UI_MODERNIZATION.md)** - Modern UI features and customization
 - **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Problem solving
 - **[docs/WEBRTC_MIGRATION.md](docs/WEBRTC_MIGRATION.md)** - Technical details
 - **[docs/PERFORMANCE_COMPARISON.md](docs/PERFORMANCE_COMPARISON.md)** - Performance metrics

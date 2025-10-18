@@ -4,18 +4,171 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ScreenShareApp"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="StreamForge" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource DiscordDarkestBg}"
+        ui:WindowHelper.UseModernWindowStyle="True">
+    
+    <Window.Resources>
+        <Style x:Key="NavButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource DiscordMutedText}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8" Margin="8,2">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource DiscordGray}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="ActionButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource DiscordBlurple}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="24,12"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ui:ControlHelper.CornerRadius" Value="4"/>
+        </Style>
+        
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource DiscordRed}"/>
+        </Style>
+    </Window.Resources>
+    
     <Grid>
-        <Image x:Name="PreviewImage" Stretch="Uniform"/>
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-            <Button x:Name="ShareButton" Content="Share Screen" Width="150" Height="40" 
-                    Click="ShareButton_Click" FontSize="16" Margin="0,0,0,10"/>
-            <Button x:Name="ViewButton" Content="View Stream" Width="150" Height="40" 
-                    Click="ViewButton_Click" FontSize="16"/>
-        </StackPanel>
-        <Button x:Name="StopButton" Content="Stop Stream" Width="150" Height="40" 
-                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20"
-                Click="StopButton_Click" FontSize="16" Visibility="Collapsed"/>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{StaticResource DiscordDarkerBg}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- Logo/Title -->
+                <Border Grid.Row="0" Background="{StaticResource DiscordDarkestBg}" 
+                        Padding="20,16" BorderBrush="{StaticResource DiscordDarkestBg}" 
+                        BorderThickness="0,0,0,2">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🎥" FontSize="24" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="StreamForge" FontSize="18" FontWeight="Bold" 
+                                   Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- Navigation -->
+                <StackPanel Grid.Row="1" Margin="0,16,0,0">
+                    <TextBlock Text="ACTIONS" FontSize="11" FontWeight="SemiBold" 
+                               Foreground="{StaticResource DiscordMutedText}" 
+                               Margin="16,0,0,8"/>
+                    <Button Style="{StaticResource NavButtonStyle}" Click="ShareButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📤" FontSize="18" Margin="0,0,12,0"/>
+                            <TextBlock Text="Share Screen" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource NavButtonStyle}" Click="ViewButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="👁" FontSize="18" Margin="0,0,12,0"/>
+                            <TextBlock Text="View Stream" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                
+                <!-- Status Footer -->
+                <Border Grid.Row="2" Background="{StaticResource DiscordDarkestBg}" 
+                        Padding="16,12" BorderBrush="{StaticResource DiscordDarkestBg}" 
+                        BorderThickness="0,2,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Ellipse Width="10" Height="10" Fill="{StaticResource DiscordGreen}" 
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock x:Name="StatusText" Text="Ready" 
+                                       FontSize="12" Foreground="{StaticResource DiscordLightText}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="InfoText" Text="" FontSize="11" 
+                                   Foreground="{StaticResource DiscordMutedText}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+        
+        <!-- Main Content -->
+        <Grid Grid.Column="1" Background="{StaticResource DiscordDarkBg}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Header -->
+            <Border Grid.Row="0" Background="{StaticResource DiscordDarkerBg}" 
+                    Padding="24,16" BorderBrush="{StaticResource DiscordDarkestBg}" 
+                    BorderThickness="0,0,0,2">
+                <Grid>
+                    <TextBlock x:Name="HeaderText" Text="Welcome to StreamForge" 
+                               FontSize="20" FontWeight="SemiBold" 
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <Button x:Name="StopButton" Content="⏹ Stop Stream" 
+                            Style="{StaticResource DangerButtonStyle}"
+                            HorizontalAlignment="Right" 
+                            Click="StopButton_Click" 
+                            Visibility="Collapsed"/>
+                </Grid>
+            </Border>
+            
+            <!-- Content Area -->
+            <Grid Grid.Row="1">
+                <!-- Preview Image -->
+                <Image x:Name="PreviewImage" Stretch="Uniform" Margin="20"/>
+                
+                <!-- Welcome Screen -->
+                <StackPanel x:Name="WelcomePanel" HorizontalAlignment="Center" 
+                            VerticalAlignment="Center">
+                    <TextBlock Text="🎬" FontSize="80" HorizontalAlignment="Center" 
+                               Margin="0,0,0,20" Opacity="0.5"/>
+                    <TextBlock Text="Start Streaming" FontSize="28" FontWeight="Bold" 
+                               Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                    <TextBlock Text="Share your screen or view a stream" 
+                               FontSize="16" Foreground="{StaticResource DiscordMutedText}" 
+                               HorizontalAlignment="Center" Margin="0,0,0,32"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="📤 Share Screen" 
+                                Style="{StaticResource ActionButtonStyle}"
+                                Width="160" Height="48" Margin="0,0,12,0"
+                                Click="ShareButton_Click"/>
+                        <Button Content="👁 View Stream" 
+                                Style="{StaticResource ActionButtonStyle}"
+                                Width="160" Height="48"
+                                Click="ViewButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

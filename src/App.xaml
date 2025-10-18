@@ -2,8 +2,25 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:ScreenShareApp"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemeResources RequestedTheme="Dark" />
+                <ui:XamlControlsResources />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Discord Color Palette -->
+            <SolidColorBrush x:Key="DiscordBlurple" Color="#5865F2"/>
+            <SolidColorBrush x:Key="DiscordDarkBg" Color="#36393F"/>
+            <SolidColorBrush x:Key="DiscordDarkerBg" Color="#2F3136"/>
+            <SolidColorBrush x:Key="DiscordDarkestBg" Color="#202225"/>
+            <SolidColorBrush x:Key="DiscordGray" Color="#4F545C"/>
+            <SolidColorBrush x:Key="DiscordLightText" Color="#DCDDDE"/>
+            <SolidColorBrush x:Key="DiscordMutedText" Color="#B9BBBE"/>
+            <SolidColorBrush x:Key="DiscordGreen" Color="#3BA55D"/>
+            <SolidColorBrush x:Key="DiscordRed" Color="#ED4245"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
